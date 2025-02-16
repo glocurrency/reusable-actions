@@ -35,15 +35,15 @@ jobs:
       - name: fetch-updated-pr-info
         id: get_pr_info
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.github-token }}
         run: |
           reviewer=$(gh pr view "${{ github.event.pull_request.number }}" --repo "${{ github.repository }}" --json reviewRequests --jq '.reviewRequests[0].login')
           echo "reviewer=$reviewer" >> $GITHUB_OUTPUT
 
       - name: notify-reviewer
         env:
-          TG_TOKEN: ${{ secrets.TG_TOKEN }}
-          TG_CHATID: ${{ secrets.TG_CHATID }}
+          TG_TOKEN: ${{ secrets.telegram-token }}
+          TG_CHATID: ${{ secrets.telegram-chat-id }}
           PR_LINK: ${{ github.event.pull_request.html_url }}
         run: |
           reviewer="${{ steps.get_pr_info.outputs.reviewer }}"
