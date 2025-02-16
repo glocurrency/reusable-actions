@@ -6,7 +6,13 @@ on:
         required: true
         type: string
         default: '.github/assign-config.yml'
-    secrets: inherit
+    secrets:
+      TG_TOKEN:
+        required: true
+      TG_CHATID:
+        required: true
+      GH_TOKEN:
+        required: true
 
 jobs:
   add-reviewers:
@@ -29,7 +35,7 @@ jobs:
       - name: fetch-updated-pr-info
         id: get_pr_info
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           reviewer=$(gh pr view "${{ github.event.pull_request.number }}" --repo "${{ github.repository }}" --json reviewRequests --jq '.reviewRequests[0].login')
           echo "reviewer=$reviewer" >> $GITHUB_OUTPUT
