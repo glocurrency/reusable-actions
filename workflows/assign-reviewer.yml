@@ -7,11 +7,11 @@ on:
         type: string
         default: '.github/assign-config.yml'
     secrets:
-      TG_TOKEN:
+      telegram-token:
         required: true
-      TG_CHATID:
+      telegram-chat-id:
         required: true
-      GH_TOKEN:
+      github-token:
         required: true
 
 jobs:
