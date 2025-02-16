@@ -1,0 +1,52 @@
+name: assign-reviewer
+on:
+  workflow_call:
+    inputs:
+      config-path:
+        required: true
+        type: string
+        default: '.github/assign-config.yml'
+    secrets: inherit
+
+jobs:
+  add-reviewers:
+    if: "!startsWith(github.head_ref, 'release-')"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: kentaro-m/auto-assign-action@v2.0.0
+        with:
+          configuration-path: ${{ inputs.config-path }}
+
+  notify-reviewer:
+    needs: add-reviewers
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: wait-5-seconds
+        run: sleep 5
+
+      - name: fetch-updated-pr-info
+        id: get_pr_info
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          reviewer=$(gh pr view "${{ github.event.pull_request.number }}" --repo "${{ github.repository }}" --json reviewRequests --jq '.reviewRequests[0].login')
+          echo "reviewer=$reviewer" >> $GITHUB_OUTPUT
+
+      - name: notify-reviewer
+        env:
+          TG_TOKEN: ${{ secrets.TG_TOKEN }}
+          TG_CHATID: ${{ secrets.TG_CHATID }}
+          PR_LINK: ${{ github.event.pull_request.html_url }}
+        run: |
+          reviewer="${{ steps.get_pr_info.outputs.reviewer }}"
+          if [ -z "$reviewer" ]; then
+            echo "No reviewer found; skipping Telegram notification."
+            exit 0
+          fi
+          message="hi, ${reviewer}, please review the PR once you have a chance - ${PR_LINK}"
+          echo "Sending Telegram message: ${message}"
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            -d chat_id="${TG_CHATID}" \
+            -d text="${message}"
