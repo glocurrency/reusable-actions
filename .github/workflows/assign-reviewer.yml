@@ -11,8 +11,6 @@ on:
         required: true
       telegram-chat-id:
         required: true
-      github-token:
-        required: true
 
 jobs:
   add-reviewers:
@@ -35,7 +33,7 @@ jobs:
       - name: fetch-updated-pr-info
         id: get_pr_info
         env:
-          GH_TOKEN: ${{ secrets.github-token }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           reviewer=$(gh pr view "${{ github.event.pull_request.number }}" --repo "${{ github.repository }}" --json reviewRequests --jq '.reviewRequests[0].login')
           echo "reviewer=$reviewer" >> $GITHUB_OUTPUT
