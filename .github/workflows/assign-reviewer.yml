@@ -10,6 +10,9 @@ on:
         required: true
       telegram-chat-id:
         required: true
+      telegram-reviewers:
+        required: false
+        default: '{}'
 
 jobs:
   add-reviewers:
@@ -41,6 +44,7 @@ jobs:
         env:
           TG_TOKEN: ${{ secrets.telegram-token }}
           TG_CHATID: ${{ secrets.telegram-chat-id }}
+          TG_REVIEWERS: ${{ secrets.telegram-reviewers }}
           PR_LINK: ${{ github.event.pull_request.html_url }}
         run: |
           reviewer="${{ steps.get_pr_info.outputs.reviewer }}"
@@ -48,7 +52,10 @@ jobs:
             echo "No reviewer found; skipping Telegram notification."
             exit 0
           fi
-          message="hi, ${reviewer}, please review the PR once you have a chance - ${PR_LINK}"
+
+          username=$(echo "$TG_REVIEWERS" | jq -r ".\"$reviewer\" // \"$reviewer\"")
+          message="hi ${username}, please review the PR once you have a chance - ${PR_LINK}"
+
           echo "Sending Telegram message: ${message}"
           curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
             -d chat_id="${TG_CHATID}" \
