@@ -12,7 +12,6 @@ on:
         required: true
       telegram-usernames:
         required: false
-        default: '{}'
 
 jobs:
   add-reviewers:
@@ -53,7 +52,14 @@ jobs:
             exit 0
           fi
 
-          username=$(echo "$TG_USERNAMES" | jq -r ".\"$reviewer\" // \"$reviewer\"")
+          if [ -z "$TG_USERNAMES" ]; then
+            echo "No Telegram usernames provided, using the reviewer login as username."
+            username=$reviewer
+          else
+            # Use the Telegram usernames mapping from the secret
+            username=$(echo "$TG_USERNAMES" | jq -r ".\"$reviewer\" // \"$reviewer\"")
+          fi
+
           message="hi ${username}, please review the PR once you have a chance - ${PR_LINK}"
 
           echo "Sending Telegram message: ${message}"
