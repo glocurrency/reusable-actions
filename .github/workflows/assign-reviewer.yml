@@ -10,7 +10,7 @@ on:
         required: true
       telegram-chat-id:
         required: true
-      telegram-reviewers:
+      telegram-usernames:
         required: false
         default: '{}'
 
@@ -44,7 +44,7 @@ jobs:
         env:
           TG_TOKEN: ${{ secrets.telegram-token }}
           TG_CHATID: ${{ secrets.telegram-chat-id }}
-          TG_REVIEWERS: ${{ secrets.telegram-reviewers }}
+          TG_USERNAMES: ${{ secrets.telegram-usernames }}
           PR_LINK: ${{ github.event.pull_request.html_url }}
         run: |
           reviewer="${{ steps.get_pr_info.outputs.reviewer }}"
@@ -53,7 +53,7 @@ jobs:
             exit 0
           fi
 
-          username=$(echo "$TG_REVIEWERS" | jq -r ".\"$reviewer\" // \"$reviewer\"")
+          username=$(echo "$TG_USERNAMES" | jq -r ".\"$reviewer\" // \"$reviewer\"")
           message="hi ${username}, please review the PR once you have a chance - ${PR_LINK}"
 
           echo "Sending Telegram message: ${message}"
