@@ -1,0 +1,45 @@
+name: alert-qa
+
+on:
+  workflow_call:
+    inputs:
+      message:
+        type: string
+        required: true
+    secrets:
+      telegram-token:
+        required: true
+      telegram-chat-id:
+        required: true
+      telegram-qa-usernames:
+        required: false  # JSON array of usernames
+
+jobs:
+  notify-with-telegram:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Choose random QA
+        id: pick
+        env:
+          TG_QA_USERNAMES: ${{ secrets.telegram-qa-usernames }}
+        run: |
+          if [ -z "$TG_QA_USERNAMES" ]; then
+            echo "selected=QA Team" >> $GITHUB_OUTPUT
+          else
+            selected=$(echo "$TG_QA_USERNAMES" | jq -r '.[]
+              ' | shuf -n 1)
+            echo "selected=$selected" >> $GITHUB_OUTPUT
+          fi
+      - name: Send Telegram Message
+        env:
+          TG_TOKEN: ${{ secrets.telegram-token }}
+          TG_CHATID: ${{ secrets.telegram-chat-id }}
+          MESSAGE: ${{ inputs.message }}
+          TESTER: ${{ steps.pick.outputs.selected }}
+        run: |
+          text="🚨 Alert\n\n👤 QA: ${TESTER}\n\n${MESSAGE}"
+          echo "Sending message to Telegram..."
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            -d chat_id="${TG_CHATID}" \
+            -d text="${MESSAGE}"
