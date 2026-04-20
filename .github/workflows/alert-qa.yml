@@ -6,6 +6,11 @@ on:
       message:
         type: string
         required: true
+      status:
+        description: "Status of the job to determine the alert type (e.g., 'success' or 'failure')"
+        type: string
+        required: false
+        default: 'failure'
     secrets:
       telegram-token:
         required: true
@@ -25,22 +30,29 @@ jobs:
           TG_QA_USERNAMES: ${{ secrets.telegram-qa-usernames }}
         run: |
           if [ -z "$TG_QA_USERNAMES" ]; then
-            echo "selected=QA Team" >> $GITHUB_OUTPUT
+            echo "selected=QA Team" >> "$GITHUB_OUTPUT"
           else
-            selected=$(echo "$TG_QA_USERNAMES" | jq -r '.[]
-              ' | shuf -n 1)
-            echo "selected=$selected" >> $GITHUB_OUTPUT
+            selected=$(echo "$TG_QA_USERNAMES" | jq -r '.[]' | shuf -n 1)
+            echo "selected=$selected" >> "$GITHUB_OUTPUT"
           fi
+          
       - name: Send Telegram Message
         env:
           TG_TOKEN: ${{ secrets.telegram-token }}
           TG_CHATID: ${{ secrets.telegram-chat-id }}
           MESSAGE: ${{ inputs.message }}
+          STATUS: ${{ inputs.status }}
           TESTER: ${{ steps.pick.outputs.selected }}
         run: |
-          # Use a heredoc or local variable to construct the text
-          # We use HTML tags here for the prefix as well
-          TEXT="🚨 <b>Alert</b> 👤 <b>QA:</b> ${TESTER}
+          # Dynamically set the prefix based on the status input
+          if [ "$STATUS" = "success" ]; then
+            PREFIX="✅ <b>OK</b>"
+          else
+            PREFIX="🚨 <b>Alert</b>"
+          fi
+
+          # Construct the text
+          TEXT="${PREFIX} 👤 <b>QA:</b> ${TESTER}
 
           ${MESSAGE}"
 
