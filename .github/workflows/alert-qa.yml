@@ -30,10 +30,11 @@ jobs:
           TG_QA_USERNAMES: ${{ secrets.telegram-qa-usernames }}
         run: |
           if [ -z "$TG_QA_USERNAMES" ]; then
-            echo "selected=QA Team" >> "$GITHUB_OUTPUT"
+            echo "selected=QA Team" >> $GITHUB_OUTPUT
           else
-            selected=$(echo "$TG_QA_USERNAMES" | jq -r '.[]' | shuf -n 1)
-            echo "selected=$selected" >> "$GITHUB_OUTPUT"
+            selected=$(echo "$TG_QA_USERNAMES" | jq -r '.[]
+              ' | shuf -n 1)
+            echo "selected=$selected" >> $GITHUB_OUTPUT
           fi
           
       - name: Send Telegram Message
