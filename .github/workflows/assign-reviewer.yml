@@ -14,8 +14,34 @@ on:
         required: false
 
 jobs:
-  add-reviewers:
+  check-reviewers:
     if: "!startsWith(github.head_ref, 'release-')"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      has-reviewers: ${{ steps.check.outputs.has-reviewers }}
+    steps:
+      - name: Check if reviewers already assigned
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          pr_json=$(gh pr view "${{ github.event.pull_request.number }}" --repo "${{ github.repository }}" --json reviewRequests,reviews)
+          
+          req_count=$(echo "$pr_json" | jq '.reviewRequests? | length // 0')
+          rev_count=$(echo "$pr_json" | jq '.reviews? | length // 0')
+          
+          echo "Found $req_count review requests and $rev_count reviews."
+          
+          if [ "$req_count" -gt 0 ] || [ "$rev_count" -gt 0 ]; then
+            echo "has-reviewers=true" >> $GITHUB_OUTPUT
+          else
+            echo "has-reviewers=false" >> $GITHUB_OUTPUT
+          fi
+
+  add-reviewers:
+    needs: check-reviewers
+    if: needs.check-reviewers.result == 'success' && needs.check-reviewers.outputs.has-reviewers == 'false'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
