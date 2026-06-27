@@ -28,10 +28,10 @@ jobs:
         run: |
           pr_json=$(gh pr view "${{ github.event.pull_request.number }}" --repo "${{ github.repository }}" --json reviewRequests,reviews)
           
-          req_count=$(echo "$pr_json" | jq '.reviewRequests? | length // 0')
-          rev_count=$(echo "$pr_json" | jq '.reviews? | length // 0')
+          req_count=$(echo "$pr_json" | jq '[.reviewRequests[]? | select( if .login? then ((.login | (endswith("[bot]") or . == "github-actions") | not) and .isBot? != true) else true end )] | length')
+          rev_count=$(echo "$pr_json" | jq '[.reviews[]? | select( if .author.login? then ((.author.login | (endswith("[bot]") or . == "github-actions") | not) and .author.isBot? != true) else false end )] | length')
           
-          echo "Found $req_count review requests and $rev_count reviews."
+          echo "Found $req_count human/team review requests and $rev_count human reviews."
           
           if [ "$req_count" -gt 0 ] || [ "$rev_count" -gt 0 ]; then
             echo "has-reviewers=true" >> $GITHUB_OUTPUT

@@ -197,7 +197,6 @@ jobs:
   review:
     uses: glocurrency/reusable-actions/.github/workflows/gemini-review.yml@main
     with:
-      gemini-model: 'gemini-3.1-pro-preview'
       prompt-path: '.github/commands/gemini-review.toml'
     secrets:
       reviewer-app-id: ${{ secrets.REVIEWER_APPID }}
