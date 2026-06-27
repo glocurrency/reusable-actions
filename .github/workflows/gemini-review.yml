@@ -19,10 +19,6 @@ on:
         description: 'Gemini API Key'
         required: true
 
-concurrency:
-  group: '${{ github.workflow }}-review-${{ github.event.pull_request.number }}'
-  cancel-in-progress: true
-
 defaults:
   run:
     shell: 'bash'
