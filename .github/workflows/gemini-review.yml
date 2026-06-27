@@ -1,0 +1,139 @@
+name: gemini-review
+
+on:
+  workflow_call:
+    inputs:
+      prompt-path:
+        description: 'Path to the prompt configuration file'
+        type: string
+        required: false
+        default: '.github/commands/gemini-review.toml'
+    secrets:
+      reviewer-app-id:
+        description: 'GitHub App ID used to mint the identity token'
+        required: true
+      reviewer-private-key:
+        description: 'GitHub App Private Key used to mint the identity token'
+        required: true
+      gemini-api-key:
+        description: 'Gemini API Key'
+        required: true
+
+concurrency:
+  group: '${{ github.workflow }}-review-${{ github.event.pull_request.number }}'
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: 'bash'
+
+jobs:
+  review:
+    runs-on: 'ubuntu-latest'
+    timeout-minutes: 5
+    permissions:
+      contents: 'read'
+      pull-requests: 'write'
+      issues: 'write'
+    steps:
+      - name: 'Acknowledge request'
+        env:
+          GITHUB_TOKEN: '${{ github.token }}'
+          ISSUE_NUMBER: '${{ github.event.pull_request.number }}'
+          MESSAGE: |-
+            🤖 Hi @${{ github.actor }}, I'm analyzing your changes now! You can track my progress [in the logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
+          REPOSITORY: '${{ github.repository }}'
+        run: |-
+          gh issue comment "${ISSUE_NUMBER}" \
+            --body "${MESSAGE}" \
+            --repo "${REPOSITORY}"
+
+      - name: 'Mint identity token'
+        id: 'mint_identity_token'
+        uses: 'actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf' # ratchet:actions/create-github-app-token@v2
+        with:
+          app-id: '${{ secrets.reviewer-app-id }}'
+          private-key: '${{ secrets.reviewer-private-key }}'
+          permission-contents: 'read'
+          permission-issues: 'write'
+          permission-pull-requests: 'write'
+
+      - name: 'Checkout repository'
+        uses: 'actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8' # ratchet:actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: 'Run Gemini pull request review'
+        uses: 'google-github-actions/run-gemini-cli@v0.1.22'
+        id: 'gemini_pr_review'
+        env:
+          GEMINI_CLI_TRUST_WORKSPACE: 'true'
+          GEMINI_API_KEY: '${{ secrets.gemini-api-key }}'
+          GITHUB_TOKEN: '${{ steps.mint_identity_token.outputs.token }}'
+          REPOSITORY: '${{ github.repository }}'
+          PULL_REQUEST_NUMBER: '${{ github.event.pull_request.number }}'
+        with:
+          gemini_api_key: '${{ secrets.gemini-api-key }}'
+          gemini_model: 'gemini-3.1-pro-preview'
+          github_pr_number: '${{ github.event.pull_request.number }}'
+          workflow_name: 'gemini-review'
+          prompt: '${{ inputs.prompt-path }}'
+          extensions: |
+            [
+              "https://github.com/gemini-cli-extensions/code-review"
+            ]
+          settings: |-
+            {
+              "model": {
+                "maxSessionTurns": 25
+              },
+              "mcpServers": {
+                "github": {
+                  "command": "docker",
+                  "args": [
+                    "run",
+                    "-i",
+                    "--rm",
+                    "-e",
+                    "GITHUB_PERSONAL_ACCESS_TOKEN",
+                    "ghcr.io/github/github-mcp-server:v0.27.0"
+                  ],
+                  "includeTools": [
+                    "add_comment_to_pending_review",
+                    "pull_request_read",
+                    "pull_request_review_write"
+                  ],
+                  "env": {
+                    "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
+                  }
+                }
+              }
+            }
+
+      - name: 'Clean up comments'
+        if: ${{ always() }}
+        env:
+          GITHUB_TOKEN: '${{ github.token }}'
+          ISSUE_NUMBER: '${{ github.event.pull_request.number }}'
+          REPOSITORY: '${{ github.repository }}'
+        run: |-
+          gh api --paginate -X GET "repos/${REPOSITORY}/issues/${ISSUE_NUMBER}/comments" -f per_page=100 \
+            --jq '.[] | select(.body | test("I.m analyzing your changes now!|but I encountered an error while revi")) | .id' \
+            | while read -r id; do
+                if [ -n "$id" ] && [ "$id" != "null" ]; then
+                  gh api -X DELETE "repos/${REPOSITORY}/issues/comments/${id}" || true
+                fi
+              done
+
+      - name: 'Send failure comment'
+        if: ${{ failure() }}
+        env:
+          GITHUB_TOKEN: '${{ github.token }}'
+          ISSUE_NUMBER: '${{ github.event.pull_request.number }}'
+          MESSAGE: |-
+            🤖 I'm sorry @${{ github.actor }}, but I encountered an error while reviewing this PR. Please [see the logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.
+          REPOSITORY: '${{ github.repository }}'
+        run: |-
+          gh issue comment "${ISSUE_NUMBER}" \
+            --body "${MESSAGE}" \
+            --repo "${REPOSITORY}"

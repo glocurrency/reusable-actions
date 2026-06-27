@@ -8,6 +8,7 @@ This repository contains reusable GitHub Actions workflows to automate developme
 
 - [1. Assign Reviewer (`assign-reviewer.yml`)](#1-assign-reviewer-assign-revieweryml)
 - [2. Alert QA (`alert-qa.yml`)](#2-alert-qa-alert-qayml)
+- [3. Gemini Review (`gemini-review.yml`)](#3-gemini-review-gemini-reviewyml)
 
 ---
 
@@ -138,3 +139,69 @@ jobs:
       telegram-chat-id: ${{ secrets.TELEGRAM_CHAT_ID }}
       telegram-qa-usernames: '["@qa_alice", "@qa_bob"]'
 ```
+
+---
+
+### 3. Gemini Review (`gemini-review.yml`)
+
+Automatically reviews Pull Requests using the Gemini Pro API model via Google's Gemini CLI extension system, posting automated review feedback comments directly to the PR.
+
+#### Features
+* Posts an acknowledgement comment when starting the analysis.
+* Automatically mints a short-lived GitHub App installation token for secure repository and PR interactions.
+* Runs the Gemini CLI tool configured with a GitHub Model Context Protocol (MCP) server running in Docker, allowing Gemini to inspect files and write comments/pending reviews.
+* Cleans up transient status/error comments upon workflow completion or failure, ensuring a tidy PR conversation.
+* Reports detailed error messages back to the PR if the review fails.
+
+#### Inputs
+
+| Name | Type | Required | Default | Description |
+| :--- | :--- | :---: | :--- | :--- |
+| `prompt-path` | `string` | No | `'.github/commands/gemini-review.toml'` | Path to the Gemini CLI review configuration/prompt file in the caller repository. |
+
+#### Secrets
+
+| Name | Required | Description |
+| :--- | :---: | :--- |
+| `reviewer-app-id` | **Yes** | GitHub App ID used to mint the identity token for review comments. |
+| `reviewer-private-key` | **Yes** | GitHub App Private Key used to mint the identity token. |
+| `gemini-api-key` | **Yes** | API key used to authenticate with Google's Gemini API. |
+
+#### Setup & Prerequisites
+
+Your calling repository must contain the prompt configuration file referenced by `prompt-path` (defaults to `.github/commands/gemini-review.toml`).
+Example of a `.github/commands/gemini-review.toml` file:
+
+```toml
+# .github/commands/gemini-review.toml
+# Gemini Review configuration
+[prompt]
+system = """
+You are a senior software engineer and security auditor.
+Your job is to review the code changes in this Pull Request, identify bugs, security vulnerabilities, or performance issues, and suggest clear, actionable improvements.
+"""
+```
+
+You also need a GitHub App with permissions for `Contents: read`, `Issues: write`, and `Pull Requests: write` to mint the identity token.
+
+#### Usage Example
+
+```yaml
+name: '🤖 gemini'
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  review:
+    uses: glocurrency/reusable-actions/.github/workflows/gemini-review.yml@main
+    with:
+      gemini-model: 'gemini-3.1-pro-preview'
+      prompt-path: '.github/commands/gemini-review.toml'
+    secrets:
+      reviewer-app-id: ${{ secrets.REVIEWER_APPID }}
+      reviewer-private-key: ${{ secrets.REVIEWER_PRIVATE_TOKEN }}
+      gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
+```
+
