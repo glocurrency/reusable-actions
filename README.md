@@ -144,7 +144,7 @@ jobs:
 
 ### 3. Gemini Review (`gemini-review.yml`)
 
-Automatically reviews Pull Requests using the Gemini Pro API model via Google's Gemini CLI extension system, posting automated review feedback comments directly to the PR.
+Automatically reviews Pull Requests using the Gemini Flash API model via Google's Gemini CLI extension system, posting automated review feedback comments directly to the PR.
 
 #### Features
 * Posts an acknowledgement comment when starting the analysis.
