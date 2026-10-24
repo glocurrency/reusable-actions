@@ -8,6 +8,11 @@ on:
         type: string
         required: false
         default: '.github/commands/gemini-review.toml'
+      max-turns:
+        description: 'Maximum number of session turns'
+        type: number
+        required: false
+        default: 100
     secrets:
       reviewer-app-id:
         description: 'GitHub App ID used to mint the identity token'
@@ -26,7 +31,7 @@ defaults:
 jobs:
   review:
     runs-on: 'ubuntu-latest'
-    timeout-minutes: 5
+    timeout-minutes: 10
     permissions:
       contents: 'read'
       pull-requests: 'write'
@@ -81,7 +86,7 @@ jobs:
           settings: |-
             {
               "model": {
-                "maxSessionTurns": 25
+                "maxSessionTurns": ${{ inputs.max-turns }}
               },
               "mcpServers": {
                 "github": {

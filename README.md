@@ -158,6 +158,7 @@ Automatically reviews Pull Requests using the Gemini Flash API model via Google'
 | Name | Type | Required | Default | Description |
 | :--- | :--- | :---: | :--- | :--- |
 | `prompt-path` | `string` | No | `'.github/commands/gemini-review.toml'` | Path to the Gemini CLI review configuration/prompt file in the caller repository. |
+| `max-turns` | `number` | No | `100` | Maximum number of session turns for the review session. |
 
 #### Secrets
 
