@@ -16,13 +16,13 @@ on:
     secrets:
       reviewer-app-id:
         description: 'GitHub App ID used to mint the identity token'
-        required: true
+        required: false
       reviewer-private-key:
         description: 'GitHub App Private Key used to mint the identity token'
-        required: true
+        required: false
       gemini-api-key:
         description: 'Gemini API Key'
-        required: true
+        required: false
 
 defaults:
   run:
@@ -31,13 +31,19 @@ defaults:
 jobs:
   review:
     runs-on: 'ubuntu-latest'
-    timeout-minutes: 10
+    timeout-minutes: 5
     permissions:
       contents: 'read'
       pull-requests: 'write'
       issues: 'write'
     steps:
+      - name: 'Early return'
+        run: |
+          echo "Gemini review is temporarily disabled."
+          exit 0
+
       - name: 'Acknowledge request'
+        if: false
         env:
           GITHUB_TOKEN: '${{ github.token }}'
           ISSUE_NUMBER: '${{ github.event.pull_request.number }}'
@@ -50,6 +56,7 @@ jobs:
             --repo "${REPOSITORY}"
 
       - name: 'Mint identity token'
+        if: false
         id: 'mint_identity_token'
         uses: 'actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf' # ratchet:actions/create-github-app-token@v2
         with:
@@ -60,11 +67,13 @@ jobs:
           permission-pull-requests: 'write'
 
       - name: 'Checkout repository'
+        if: false
         uses: 'actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8' # ratchet:actions/checkout@v6
         with:
           persist-credentials: false
 
       - name: 'Run Gemini pull request review'
+        if: false
         uses: 'google-github-actions/run-gemini-cli@v0.1.22'
         id: 'gemini_pr_review'
         env:
@@ -112,7 +121,7 @@ jobs:
             }
 
       - name: 'Clean up comments'
-        if: ${{ always() }}
+        if: false
         env:
           GITHUB_TOKEN: '${{ github.token }}'
           ISSUE_NUMBER: '${{ github.event.pull_request.number }}'
@@ -127,7 +136,7 @@ jobs:
               done
 
       - name: 'Send failure comment'
-        if: ${{ failure() }}
+        if: false
         env:
           GITHUB_TOKEN: '${{ github.token }}'
           ISSUE_NUMBER: '${{ github.event.pull_request.number }}'
